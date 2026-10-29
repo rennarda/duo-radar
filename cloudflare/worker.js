@@ -69,7 +69,7 @@ async function sendPush(env, notification, onlyEndpoint) {
   for (const row of subscriptions) {
     try {
       const subscription = JSON.parse(row.subscription);
-      const request = await buildPushPayload({ data: payload, options: { ttl: 60 } }, subscription, vapid);
+      const request = await buildPushPayload({ data: payload, options: { ttl: 300, urgency: 'high' } }, subscription, vapid);
       const response = await fetch(subscription.endpoint, request);
       if (response.status === 404 || response.status === 410) await env.DB.prepare('DELETE FROM subscriptions WHERE endpoint = ?').bind(row.endpoint).run();
       else if (!response.ok) console.error('Push failed', response.status);
