@@ -1,0 +1,42 @@
+# Duo Radar
+
+A self-hosted UK iPhone Duo pickup monitor. It checks all eight colour and storage variants against Apple's UK store pickup response once a minute, shows current availability, and sends browser push alerts when a watched store becomes newly available. Each alert opens Apple's UK iPhone Duo buying page with the matching product selected; choose pickup during Apple's checkout. Availability is not a reservation.
+
+The six stores are preselected:
+
+| Place | Apple Store |
+| --- | --- |
+| Birmingham | Birmingham, New Street |
+| Solihull | Touchwood Centre |
+| Leicester | Highcross |
+| Manchester | Manchester Arndale; Trafford Centre |
+| Sheffield | Meadowhall |
+
+## Run
+
+Requires Node.js 20+ and a server with outbound HTTPS access to `www.apple.com` and browser push endpoints.
+
+```bash
+npm install
+export ADMIN_TOKEN="$(openssl rand -hex 32)"
+npm start
+```
+
+Open `http://localhost:3000`, enter the token, and enable browser notifications. Keep the token in a password manager. State, subscriptions, and VAPID keys are saved in `data/state.json`; back it up and keep it private. For a remote installation, serve the app over HTTPS. On iPhone, install the page to the Home Screen before enabling push alerts.
+
+## Recommended hosting: Railway
+
+Railway can run the Node checker continuously, issue a public HTTPS domain, and attach a persistent volume for push subscriptions. Create a Railway service from this source (via GitHub or the Railway CLI), then:
+
+1. Add a volume to the service and mount it at `/data`.
+2. Set `DATA_DIR=/data`, `HOST=0.0.0.0`, `ADMIN_TOKEN` to a fresh random 32-byte hex value, and `VAPID_SUBJECT=mailto:your-address@example.com` with your real contact address. Railway supplies `PORT`.
+3. In service settings, leave Serverless disabled so the minute-by-minute checker keeps running. Generate a public Railway domain under **Networking → Public Networking**. Set the health check path to `/health`.
+4. Open the HTTPS domain, unlock the dashboard with `ADMIN_TOKEN`, and enable push alerts. Keep the service at one replica because it uses a single state file and polling loop.
+
+The Railway volume holds `state.json`, including push subscriptions and VAPID keys. Do not remove it during redeploys. You can start on Railway Free: after its trial, it includes $1 of usage credit each month and supports a 0.5 GB volume. Check Railway's usage dashboard to confirm this continuously running service stays within that credit. A limited trial may restrict outbound access to Apple; verify the dashboard's first stock check succeeds. Railway Hobby has a $5 monthly minimum usage with $5 of included usage credits.
+
+The checker lives in the Node process. Keep `npm start` running under a process manager or systemd. `POLL_SECONDS` can change the interval but is clamped to at least 30 seconds. Apple's pickup endpoint is unofficial and may change or rate-limit requests; the dashboard reports errors and never treats an error as stock availability.
+
+If your server requires an HTTP proxy for outbound traffic and uses Node.js 24, start it with `NODE_USE_ENV_PROXY=1` while preserving `HTTPS_PROXY` and `HTTP_PROXY`.
+
+Environment variables: `PORT` (default `3000`), `HOST` (default `127.0.0.1`), `ADMIN_TOKEN` (required, 24+ characters), `POLL_SECONDS` (default `60`), `DATA_DIR` (default `./data`). Run `npm test` for the stock parsing checks.
