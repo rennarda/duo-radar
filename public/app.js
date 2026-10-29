@@ -24,6 +24,7 @@ function render(state) {
   text($('count'), state.watched.length);
   const testCount = state.available.filter(item => item.test).length;
   text($('result-count'), `${state.available.length - testCount} FOUND${testCount ? ` · ${testCount} TEST` : ''}`);
+  $('clear-test').hidden = testCount === 0;
   text($('last-error'), state.lastError || '');
   const list = $('results'); list.replaceChildren();
   if (!state.available.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = state.watched.length ? 'No matching iPhone Duo is available for pickup right now.' : 'Select stores to begin monitoring.'; list.append(p); }
@@ -48,5 +49,8 @@ $('save').addEventListener('click', async () => { try { const watched = [...docu
 function decodeKey(base64) { const padding = '='.repeat((4 - base64.length % 4) % 4); const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, char => char.charCodeAt(0)); }
 $('notify').addEventListener('click', async () => { try { if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Push is unavailable here. Use HTTPS or localhost; on iPhone, add this page to Home Screen.'); const permission = await Notification.requestPermission(); if (permission !== 'granted') throw new Error('Notification permission was not granted.'); const state = await api('/state'); await navigator.serviceWorker.register('/sw.js'); const registration = await navigator.serviceWorker.ready; const existing = await registration.pushManager.getSubscription(); const subscription = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: decodeKey(state.publicKey) }); await api('/subscribe', { method: 'POST', body: JSON.stringify(subscription) }); const test = await api('/test-push', { method: 'POST', body: JSON.stringify({ endpoint: subscription.endpoint }) }); text($('notify-message'), test.sent ? 'Push alerts are enabled. A test notification was sent.' : 'Push is enabled, but the test notification did not go through. Check notification settings on this device.'); } catch (error) { text($('notify-message'), error.message); } });
 $('check').addEventListener('click', async () => { try { text($('last-error'), 'Checking Apple now…'); await api('/check', { method: 'POST' }); await load(); } catch (error) { text($('last-error'), error.message); } });
+$('clear-test').addEventListener('click', async () => { try { await api('/clear-test', { method: 'POST' }); await load(); } catch (error) { text($('last-error'), error.message); } });
 if (token) load();
 setInterval(() => { if (token) load(); }, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && token) load(); });
+window.addEventListener('pageshow', () => { if (token) load(); });

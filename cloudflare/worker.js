@@ -143,6 +143,10 @@ export default {
         const result = await ingest(env, await request.json(), new URL('/', request.url).href);
         return result ? respond(result) : respond({ error: 'Invalid stock report.' }, 400);
       }
+      if (request.method === 'POST' && url.pathname === '/api/clear-test') {
+        await env.DB.prepare('DELETE FROM test_reports WHERE id = 1').run();
+        return respond({ ok: true });
+      }
       if (request.method === 'POST' && url.pathname === '/api/subscribe') {
         const subscription = await request.json();
         if (typeof subscription.endpoint !== 'string' || !subscription.endpoint.startsWith('https://') || typeof subscription.keys?.p256dh !== 'string' || typeof subscription.keys?.auth !== 'string') return respond({ error: 'Invalid push subscription.' }, 400);
