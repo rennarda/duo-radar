@@ -20,10 +20,41 @@ async function settings(env) {
   return { location: row.location, watched: JSON.parse(row.watched), available: JSON.parse(row.available), lastCheck: row.last_check, lastError: row.last_error };
 }
 
+function decodeBase64Url(value) {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(padded), character => character.charCodeAt(0));
+}
+
+function encodeBase64Url(bytes) {
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function vapidKeys(env) {
+  if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT) {
+    return { subject: env.VAPID_SUBJECT, publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY };
+  }
+  const subject = env.VAPID_SUBJECT || 'https://github.com/rennarda/duo-radar';
+  let row = await env.DB.prepare('SELECT public_key, private_key FROM vapid_keys WHERE id = 1').first();
+  if (!row) {
+    const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const publicJwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
+    const privateJwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
+    const publicBytes = new Uint8Array(65);
+    publicBytes[0] = 4;
+    publicBytes.set(decodeBase64Url(publicJwk.x), 1);
+    publicBytes.set(decodeBase64Url(publicJwk.y), 33);
+    await env.DB.prepare('INSERT OR IGNORE INTO vapid_keys (id, public_key, private_key) VALUES (1, ?, ?)')
+      .bind(encodeBase64Url(publicBytes), privateJwk.d).run();
+    row = await env.DB.prepare('SELECT public_key, private_key FROM vapid_keys WHERE id = 1').first();
+  }
+  return { subject, publicKey: row.public_key, privateKey: row.private_key };
+}
+
 async function pushNew(env, item) {
   const payload = JSON.stringify({ title: `iPhone Duo available at ${item.storeName}`, body: `${item.storage} ${item.color} · Tap to order for collection`, url: item.url, tag: item.key });
   const subscriptions = (await env.DB.prepare('SELECT endpoint, subscription FROM subscriptions').all()).results;
-  const vapid = { subject: env.VAPID_SUBJECT, publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY };
+  if (!subscriptions.length) return;
+  const vapid = await vapidKeys(env);
   for (const row of subscriptions) {
     try {
       const subscription = JSON.parse(row.subscription);
@@ -66,7 +97,7 @@ export default {
       if (request.method === 'GET' && url.pathname === '/api/state') {
         const current = await settings(env);
         const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM subscriptions').first();
-        return respond({ ...current, subscriptionCount: count.count, publicKey: env.VAPID_PUBLIC_KEY, variants });
+        return respond({ ...current, subscriptionCount: count.count, publicKey: (await vapidKeys(env)).publicKey, variants });
       }
       if (request.method === 'GET' && url.pathname === '/api/stores') {
         const stores = await getPickup(url.searchParams.get('location') || '', [stockSkus[0]]);

@@ -35,7 +35,7 @@ The repository includes a manually triggered [GitHub Actions workflow](.github/w
 1. The D1 database named `duo-radar` is already created and its ID is configured in `wrangler.jsonc`.
 2. In this repository's **Settings → Secrets and variables → Actions**, add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Scope the API token to your account with Workers Scripts Edit and D1 Edit permissions.
 3. On GitHub, open **Actions → Deploy Duo Radar to Cloudflare → Run workflow**. It applies the schema and deploys the Worker to a `*.workers.dev` HTTPS address.
-4. In the Cloudflare Worker settings, add runtime secrets `ADMIN_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`. Generate the VAPID pair on your own machine with `npx web-push generate-vapid-keys`. Use a fresh random 32-byte hex value for `ADMIN_TOKEN` and `mailto:your-address@example.com` for `VAPID_SUBJECT`.
+4. In the Cloudflare Worker settings, add the runtime secret `ADMIN_TOKEN` with a unique value of at least 24 characters. The Worker generates browser push keys on first use and keeps them in D1.
 5. Open the Worker URL, enter `ADMIN_TOKEN`, and enable push notifications. The six requested stores are already selected. On iPhone, add the page to the Home Screen first.
 
 ### Deploy from a local terminal
@@ -46,7 +46,7 @@ If you prefer to deploy without GitHub Actions, sign in with `npx wrangler login
 2. Confirm the returned database ID matches `wrangler.jsonc`.
 3. Run `npx wrangler d1 execute duo-radar --remote --file cloudflare/schema.sql`.
 4. Run `npm run cf:deploy` to create the Worker and its `*.workers.dev` HTTPS address.
-5. Run `npx web-push generate-vapid-keys` on your own machine. Set `ADMIN_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` with `npx wrangler secret put NAME`, entering each value at the prompt. Use a fresh random 32-byte hex value for `ADMIN_TOKEN` and `mailto:your-address@example.com` for `VAPID_SUBJECT`.
+5. Set `ADMIN_TOKEN` with `npx wrangler secret put ADMIN_TOKEN`, entering a unique value of at least 24 characters at the prompt. The Worker generates browser push keys on first use and keeps them in D1.
 6. Open the Worker URL, enter `ADMIN_TOKEN`, and enable push notifications. The six requested stores are already selected. On iPhone, add the page to the Home Screen first.
 
 Check `/health` and then the dashboard's last check time and error field. Scheduled events can take up to 30 minutes to begin after first deployment. The Worker stores no secret or subscription in the GitHub repository.

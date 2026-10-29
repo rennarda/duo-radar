@@ -12,3 +12,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   endpoint TEXT PRIMARY KEY,
   subscription TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS vapid_keys (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  public_key TEXT NOT NULL,
+  private_key TEXT NOT NULL
+);
