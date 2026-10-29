@@ -24,7 +24,22 @@ npm start
 
 Open `http://localhost:3000`, enter the token, and enable browser notifications. Keep the token in a password manager. State, subscriptions, and VAPID keys are saved in `data/state.json`; back it up and keep it private. For a remote installation, serve the app over HTTPS. On iPhone, install the page to the Home Screen before enabling push alerts.
 
-## Recommended hosting: Railway
+## Free hosting: Cloudflare Workers
+
+The `cloudflare/` Worker uses a one-minute Cron Trigger, Cloudflare D1 for persistent state, and the same dashboard and push notification flow. Cloudflare Workers Free currently permits 100,000 requests per day and five cron triggers; D1 Free permits 100,000 rows written per day. This app normally uses one scheduled invocation and one state update each minute. The Worker has not been tested against Apple's endpoint from Cloudflare's production network, so confirm the first live check succeeds after deployment.
+
+After creating a Cloudflare account and signing in with `npx wrangler login`:
+
+1. Run `npm ci`, then `npx wrangler d1 create duo-radar`.
+2. Copy the returned database ID into `wrangler.jsonc` in place of `REPLACE_WITH_YOUR_D1_DATABASE_ID`.
+3. Run `npx wrangler d1 execute duo-radar --remote --file cloudflare/schema.sql`.
+4. Run `npm run cf:deploy` to create the Worker and its `*.workers.dev` HTTPS address.
+5. Run `npx web-push generate-vapid-keys` on your own machine. Set `ADMIN_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` with `npx wrangler secret put NAME`, entering each value at the prompt. Use a fresh random 32-byte hex value for `ADMIN_TOKEN` and `mailto:your-address@example.com` for `VAPID_SUBJECT`.
+6. Open the Worker URL, enter `ADMIN_TOKEN`, and enable push notifications. The six requested stores are already selected. On iPhone, add the page to the Home Screen first.
+
+Check `/health` and then the dashboard's last check time and error field. Scheduled events can take up to 30 minutes to begin after first deployment. The Worker stores no secret or subscription in the GitHub repository.
+
+## Alternative hosting: Railway
 
 Railway can run the Node checker continuously, issue a public HTTPS domain, and attach a persistent volume for push subscriptions. Create a Railway service from this source (via GitHub or the Railway CLI), then:
 
