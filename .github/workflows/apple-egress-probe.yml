@@ -11,6 +11,12 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Apple pickup endpoint
+      - name: Check Apple pickup endpoint with Node fetch
         run: |
-          curl --silent --show-error --location --max-time 20 --output /dev/null --write-out 'http=%{http_code} bytes=%{size_download}\n' 'https://www.apple.com/uk/shop/retail/pickup-message?parts.0=MK2E4QN%2FA&location=B2%204JH'
+          node --input-type=module <<'JS'
+          const response = await fetch('https://www.apple.com/uk/shop/retail/pickup-message?parts.0=MK2E4QN%2FA&location=B2%204JH', {
+            headers: { accept: 'application/json', 'user-agent': 'DuoRadar/1.0' }
+          });
+          console.log('http=' + response.status + ' bytes=' + (await response.arrayBuffer()).byteLength);
+          process.exitCode = response.ok ? 0 : 1;
+          JS
