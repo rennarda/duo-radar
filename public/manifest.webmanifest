@@ -1,0 +1,13 @@
+{
+  "id": "/",
+  "name": "Duo Radar",
+  "short_name": "Duo Radar",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d1320",
+  "theme_color": "#0d1320",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
