@@ -1,0 +1,16 @@
+name: Probe Apple pickup access
+
+on:
+  push:
+    branches: [apple-egress-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Apple pickup endpoint
+        run: |
+          curl --silent --show-error --location --max-time 20 --output /dev/null --write-out 'http=%{http_code} bytes=%{size_download}\n' 'https://www.apple.com/uk/shop/retail/pickup-message?parts.0=MK2E4QN%2FA&location=B2%204JH'
