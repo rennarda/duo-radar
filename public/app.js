@@ -22,16 +22,17 @@ function render(state) {
   text($('status'), !state.watched.length ? 'Waiting for setup' : state.lastError ? 'Check failed' : overdue ? 'Checker offline' : state.lastCheck ? 'Monitoring' : 'Waiting for checker');
   text($('checked'), state.lastCheck ? new Date(state.lastCheck).toLocaleTimeString() : '—');
   text($('count'), state.watched.length);
-  text($('result-count'), `${state.available.length} FOUND`);
+  const testCount = state.available.filter(item => item.test).length;
+  text($('result-count'), `${state.available.length - testCount} FOUND${testCount ? ` · ${testCount} TEST` : ''}`);
   text($('last-error'), state.lastError || '');
   const list = $('results'); list.replaceChildren();
   if (!state.available.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = state.watched.length ? 'No matching iPhone Duo is available for pickup right now.' : 'Select stores to begin monitoring.'; list.append(p); }
   for (const item of state.available) {
     const row = document.createElement('div'); row.className = 'result';
-    const name = document.createElement('strong'); name.textContent = `iPhone Duo · ${item.storage} ${item.color}`;
+    const name = document.createElement('strong'); name.textContent = `${item.test ? 'TEST ONLY · ' : ''}iPhone Duo · ${item.storage} ${item.color}`;
     const store = document.createElement('small'); store.textContent = item.storeName;
     const info = document.createElement('div'); info.append(name, store);
-    const link = document.createElement('a'); link.href = item.url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Order at Apple ↗';
+    const link = document.createElement('a'); link.href = item.url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = item.test ? 'View test ↗' : 'Order at Apple ↗';
     row.append(info, link); list.append(row);
   }
 }

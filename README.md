@@ -62,6 +62,8 @@ Enter the same dashboard password used on the Cloudflare site. The checker saves
 
 On a Mac, after the first successful one-off check, run `npm run home:install-mac` to start the checker automatically at login and restart it if it stops. Keep the repository folder in the same place. The background log is `~/.duo-radar/checker.log`; run `npm run home:remove-mac` to stop automatic checks. The Mac still needs to stay awake and connected; closing a MacBook lid normally suspends it.
 
+To verify the full path from the Mac checker through the website and browser push, run `npm run home -- --test-stock`. It fetches a real Apple response, changes one unavailable configuration to a simulated available one, and sends it through the normal report endpoint. The notification and dashboard row say **TEST ONLY** and link back to the dashboard, never to Apple's checkout. The simulated row is separate from live availability and expires after five minutes.
+
 The dashboard reports the last check time and any Apple error. It shows **Checker offline** if no report arrives for three minutes. Check `/health` for the site's basic availability. The Worker stores no secret or subscription in the GitHub repository.
 
 ## Alternative hosting: Railway

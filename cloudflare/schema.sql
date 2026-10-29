@@ -17,3 +17,8 @@ CREATE TABLE IF NOT EXISTS vapid_keys (
   public_key TEXT NOT NULL,
   private_key TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS test_reports (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  available TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);

@@ -5,6 +5,7 @@ import readline from 'node:readline/promises';
 import { getPickup, variants } from '../src/apple.js';
 
 const base = new URL(process.env.RADAR_URL || 'https://duo-radar.rennard-dc1.workers.dev');
+const testStock = process.argv.includes('--test-stock');
 if (base.protocol !== 'https:' && !(base.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(base.hostname))) {
   throw new Error('RADAR_URL must use HTTPS.');
 }
@@ -52,22 +53,47 @@ async function scan() {
     const found = new Set(stores.map(store => store.storeNumber));
     const missing = state.watched.filter(number => !found.has(number));
     if (missing.length) throw new Error(`Apple omitted watched stores: ${missing.join(', ')}`);
-    const result = await api('/api/ingest', { stores: stores.filter(store => watched.has(store.storeNumber)) });
+    const selectedStores = stores.filter(store => watched.has(store.storeNumber));
+    let test;
+    if (testStock) {
+      for (const store of selectedStores) {
+        const variant = variants.find(item => {
+          const part = store.partsAvailability?.[item.sku];
+          return part?.pickupDisplay !== 'available' || part?.storePickEligible !== true;
+        });
+        if (!variant) continue;
+        store.partsAvailability = {
+          ...store.partsAvailability,
+          [variant.sku]: { ...store.partsAvailability?.[variant.sku], pickupDisplay: 'available', storePickEligible: true }
+        };
+        test = { storeNumber: store.storeNumber, sku: variant.sku };
+        console.log(`TEST ONLY: simulating ${variant.storage} ${variant.color} at ${store.storeName}.`);
+        break;
+      }
+      if (!test) throw new Error('Every watched configuration is already available; there is no unavailable item to simulate.');
+    }
+    const result = await api('/api/ingest', { stores: selectedStores, ...(test ? { test } : {}) });
+    if (test) {
+      console.log(`TEST ONLY: sent to ${result.alerts} subscribed device(s). The dashboard test row expires in five minutes.`);
+      return true;
+    }
     console.log(new Date().toLocaleString(), `Checked ${watched.size} stores; ${result.available} available; ${result.alerts} new alerts.`);
     return true;
   } catch (error) {
     console.error(new Date().toLocaleString(), error.message);
-    try { await api('/api/ingest', { error: error.message }); }
-    catch (reportError) { console.error('Could not report check failure:', reportError.message); }
+    if (!testStock) {
+      try { await api('/api/ingest', { error: error.message }); }
+      catch (reportError) { console.error('Could not report check failure:', reportError.message); }
+    }
     return false;
   }
 }
 
-if (!process.argv.includes('--once')) console.log('Duo Radar is checking Apple once a minute. Keep this computer on and this window open.');
+if (!process.argv.includes('--once') && !testStock) console.log('Duo Radar is checking Apple once a minute. Keep this computer on and this window open.');
 do {
   const started = Date.now();
   const successful = await scan();
-  if (process.argv.includes('--once')) {
+  if (process.argv.includes('--once') || testStock) {
     if (!successful) process.exitCode = 1;
     break;
   }

@@ -80,10 +80,15 @@ async function sendPush(env, notification, onlyEndpoint) {
 }
 
 async function pushNew(env, item) {
-  return sendPush(env, { title: `iPhone Duo available at ${item.storeName}`, body: `${item.storage} ${item.color} · Tap to order for collection`, url: item.url, tag: item.key });
+  return sendPush(env, {
+    title: item.test ? `TEST ONLY: iPhone Duo at ${item.storeName}` : `iPhone Duo available at ${item.storeName}`,
+    body: item.test ? `${item.storage} ${item.color} · Simulated stock. Tap to view the test.` : `${item.storage} ${item.color} · Tap to order for collection`,
+    url: item.url,
+    tag: item.key
+  });
 }
 
-async function ingest(env, input) {
+async function ingest(env, input, siteUrl) {
   if (typeof input?.error === 'string') {
     await env.DB.prepare('UPDATE radar SET last_check = ?, last_error = ? WHERE id = 1')
       .bind(new Date().toISOString(), input.error.slice(0, 300)).run();
@@ -95,6 +100,15 @@ async function ingest(env, input) {
   }
   const current = await settings(env);
   const matches = availableItems(input.stores, current.watched);
+  if (input.test !== undefined) {
+    const item = matches.find(match => match.storeNumber === input.test?.storeNumber && match.sku === input.test?.sku);
+    if (!item) return null;
+    const testItem = { ...item, test: true, key: `test:${item.key}`, url: siteUrl };
+    await env.DB.prepare('INSERT OR REPLACE INTO test_reports (id, available, expires_at) VALUES (1, ?, ?)')
+      .bind(JSON.stringify([testItem]), Date.now() + 5 * 60 * 1000).run();
+    const sent = await pushNew(env, testItem);
+    return { ok: true, test: true, available: 1, alerts: sent };
+  }
   const old = new Set(current.available.map(item => item.key));
   const fresh = matches.filter(item => !old.has(item.key));
   await env.DB.prepare('UPDATE radar SET available = ?, last_check = ?, last_error = NULL WHERE id = 1')
@@ -113,7 +127,8 @@ export default {
       if (request.method === 'GET' && url.pathname === '/api/state') {
         const current = await settings(env);
         const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM subscriptions').first();
-        return respond({ ...current, subscriptionCount: count.count, publicKey: (await vapidKeys(env)).publicKey, variants, checkMode: 'external' });
+        const test = await env.DB.prepare('SELECT available FROM test_reports WHERE id = 1 AND expires_at > ?').bind(Date.now()).first();
+        return respond({ ...current, available: [...current.available, ...(test ? JSON.parse(test.available) : [])], subscriptionCount: count.count, publicKey: (await vapidKeys(env)).publicKey, variants, checkMode: 'external' });
       }
       if (request.method === 'GET' && url.pathname === '/api/stores') {
         return respond({ stores: chosenStores });
@@ -125,7 +140,7 @@ export default {
         return respond({ ok: true });
       }
       if (request.method === 'POST' && url.pathname === '/api/ingest') {
-        const result = await ingest(env, await request.json());
+        const result = await ingest(env, await request.json(), new URL('/', request.url).href);
         return result ? respond(result) : respond({ error: 'Invalid stock report.' }, 400);
       }
       if (request.method === 'POST' && url.pathname === '/api/subscribe') {
