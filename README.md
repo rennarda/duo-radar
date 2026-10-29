@@ -28,7 +28,19 @@ Open `http://localhost:3000`, enter the token, and enable browser notifications.
 
 The `cloudflare/` Worker uses a one-minute Cron Trigger, Cloudflare D1 for persistent state, and the same dashboard and push notification flow. Cloudflare Workers Free currently permits 100,000 requests per day and five cron triggers; D1 Free permits 100,000 rows written per day. This app normally uses one scheduled invocation and one state update each minute. The Worker has not been tested against Apple's endpoint from Cloudflare's production network, so confirm the first live check succeeds after deployment.
 
-After creating a Cloudflare account and signing in with `npx wrangler login`:
+### Deploy from GitHub
+
+The repository includes a manually triggered [GitHub Actions workflow](.github/workflows/deploy-cloudflare.yml). Keep the Cloudflare API token in GitHub Actions secrets, never in this repository or chat.
+
+1. In Cloudflare, create a D1 database named `duo-radar` and send me its database ID (the ID is not a secret). I will put that ID into `wrangler.jsonc` and push it.
+2. In this repository's **Settings → Secrets and variables → Actions**, add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Scope the API token to your account with Workers Scripts Edit and D1 Edit permissions.
+3. On GitHub, open **Actions → Deploy Duo Radar to Cloudflare → Run workflow**. It applies the schema and deploys the Worker to a `*.workers.dev` HTTPS address.
+4. In the Cloudflare Worker settings, add runtime secrets `ADMIN_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`. Generate the VAPID pair on your own machine with `npx web-push generate-vapid-keys`. Use a fresh random 32-byte hex value for `ADMIN_TOKEN` and `mailto:your-address@example.com` for `VAPID_SUBJECT`.
+5. Open the Worker URL, enter `ADMIN_TOKEN`, and enable push notifications. The six requested stores are already selected. On iPhone, add the page to the Home Screen first.
+
+### Deploy from a local terminal
+
+If you prefer to deploy without GitHub Actions, sign in with `npx wrangler login` and:
 
 1. Run `npm ci`, then `npx wrangler d1 create duo-radar`.
 2. Copy the returned database ID into `wrangler.jsonc` in place of `REPLACE_WITH_YOUR_D1_DATABASE_ID`.
