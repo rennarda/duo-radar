@@ -5,5 +5,5 @@
   "compatibility_date": "2026-10-29",
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   "triggers": { "crons": ["* * * * *"] },
-  "d1_databases": [{ "binding": "DB", "database_name": "duo-radar", "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID" }]
+  "d1_databases": [{ "binding": "DB", "database_name": "duo-radar", "database_id": "691d33aa-45c7-4529-895b-ec06ca4c8109" }]
 }

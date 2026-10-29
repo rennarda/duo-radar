@@ -32,7 +32,7 @@ The `cloudflare/` Worker uses a one-minute Cron Trigger, Cloudflare D1 for persi
 
 The repository includes a manually triggered [GitHub Actions workflow](.github/workflows/deploy-cloudflare.yml). Keep the Cloudflare API token in GitHub Actions secrets, never in this repository or chat.
 
-1. In Cloudflare, create a D1 database named `duo-radar` and send me its database ID (the ID is not a secret). I will put that ID into `wrangler.jsonc` and push it.
+1. The D1 database named `duo-radar` is already created and its ID is configured in `wrangler.jsonc`.
 2. In this repository's **Settings → Secrets and variables → Actions**, add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Scope the API token to your account with Workers Scripts Edit and D1 Edit permissions.
 3. On GitHub, open **Actions → Deploy Duo Radar to Cloudflare → Run workflow**. It applies the schema and deploys the Worker to a `*.workers.dev` HTTPS address.
 4. In the Cloudflare Worker settings, add runtime secrets `ADMIN_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`. Generate the VAPID pair on your own machine with `npx web-push generate-vapid-keys`. Use a fresh random 32-byte hex value for `ADMIN_TOKEN` and `mailto:your-address@example.com` for `VAPID_SUBJECT`.
@@ -43,7 +43,7 @@ The repository includes a manually triggered [GitHub Actions workflow](.github/w
 If you prefer to deploy without GitHub Actions, sign in with `npx wrangler login` and:
 
 1. Run `npm ci`, then `npx wrangler d1 create duo-radar`.
-2. Copy the returned database ID into `wrangler.jsonc` in place of `REPLACE_WITH_YOUR_D1_DATABASE_ID`.
+2. Confirm the returned database ID matches `wrangler.jsonc`.
 3. Run `npx wrangler d1 execute duo-radar --remote --file cloudflare/schema.sql`.
 4. Run `npm run cf:deploy` to create the Worker and its `*.workers.dev` HTTPS address.
 5. Run `npx web-push generate-vapid-keys` on your own machine. Set `ADMIN_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` with `npx wrangler secret put NAME`, entering each value at the prompt. Use a fresh random 32-byte hex value for `ADMIN_TOKEN` and `mailto:your-address@example.com` for `VAPID_SUBJECT`.
